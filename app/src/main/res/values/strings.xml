@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">SpinKitDemo</string>
+    <string name="show_spin_wheel_button">Show Spin Wheel</string>
 </resources>
