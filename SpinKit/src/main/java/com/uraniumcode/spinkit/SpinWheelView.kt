@@ -7,9 +7,13 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import kotlin.math.min
 import androidx.core.graphics.withRotation
+import kotlin.math.atan2
+import kotlin.math.sqrt
 
 
 class SpinWheelView @JvmOverloads constructor(
@@ -39,7 +43,26 @@ class SpinWheelView @JvmOverloads constructor(
     private val pointerUpOffset = 16f
     private var animator: SpinWheelAnimator? = null
     private var onSpinEndListener: ((Int, SpinWheelItem) -> Unit)? = null
+    private var gestureDetector: GestureDetector
+    private var lastTouchAngle = 0.0
 
+    init {
+        gestureDetector =
+            GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+                override fun onFling(
+                    e1: MotionEvent?,
+                    e2: MotionEvent,
+                    velocityX: Float,
+                    velocityY: Float
+                ): Boolean {
+                    val velocity = sqrt(velocityX * velocityX + velocityY * velocityY)
+                    if (velocity > 1500) {
+                        spin()
+                    }
+                    return true
+                }
+            })
+    }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -106,6 +129,38 @@ class SpinWheelView @JvmOverloads constructor(
         drawer.drawCenterIcon(canvas, centerX, centerY, centerIcon, config)
     }
 
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(event)
+        val centerX = width / 2f
+        val centerY = height / 2f
+        val touchX = event.x
+        val touchY = event.y
+        val angle =
+            Math.toDegrees(atan2((touchY - centerY).toDouble(), (touchX - centerX).toDouble()))
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                lastTouchAngle = angle
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                val delta = angle - lastTouchAngle
+                currentAngle += delta.toFloat()
+                lastTouchAngle = angle
+                invalidate()
+            }
+
+            MotionEvent.ACTION_UP -> {
+                performClick()
+            }
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
     fun spin() {
         if (items.isEmpty()) return
         val targetIndex = when (spinType) {
@@ -135,16 +190,6 @@ class SpinWheelView @JvmOverloads constructor(
         )
     }
 
-    private fun handleSpinEnd() {
-        if (items.isEmpty()) return
-        val normalizedAngle = (currentAngle % 360f + 360f) % 360f
-        val anglePerSlice = 360f / items.size
-        val rawPointerAngle = 270f
-        val wheelAngle = (rawPointerAngle - normalizedAngle + 360f) % 360f
-        val winningIndex = (wheelAngle / anglePerSlice).toInt() % items.size
-        onSpinEndListener?.invoke(winningIndex, items[winningIndex])
-    }
-
     fun setItems(items: List<SpinWheelItem>) {
         this.items = items; invalidate()
     }
@@ -169,4 +214,13 @@ class SpinWheelView @JvmOverloads constructor(
         onSpinEndListener = listener
     }
 
+    private fun handleSpinEnd() {
+        if (items.isEmpty()) return
+        val normalizedAngle = (currentAngle % 360f + 360f) % 360f
+        val anglePerSlice = 360f / items.size
+        val rawPointerAngle = 270f
+        val wheelAngle = (rawPointerAngle - normalizedAngle + 360f) % 360f
+        val winningIndex = (wheelAngle / anglePerSlice).toInt() % items.size
+        onSpinEndListener?.invoke(winningIndex, items[winningIndex])
+    }
 }
