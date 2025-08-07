@@ -32,7 +32,7 @@ Using **JitPack**:
 
 2. Add the dependency to your **module** (`app`) `build.gradle`:
     ```groovy
-    implementation 'com.github.cgdsky:SpinKit:1.0.0'
+    implementation 'com.github.cgdsky:SpinKit:1.0.1'
     ```
 
 ---
